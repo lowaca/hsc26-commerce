@@ -449,7 +449,7 @@ class ChorchaQuizBot:
             page.screenshot(path=homepage_screenshot)
             self.collected_screenshots.append((homepage_screenshot, "Dashboard Homepage"))
             
-            streak_selector = ".text-sm.py-1.px-3.cursor-pointer, [class*='text-sm py-1 px-3 cursor-pointer']"
+            streak_selector = 'button:has(img[src*="fire.svg"]), [class*="cursor-pointer"]:has(img[src*="fire.svg"]), img[src*="fire.svg"]'
             streak_target = page.locator(streak_selector).first
             
             if streak_target.is_visible():
@@ -537,9 +537,9 @@ class ChorchaQuizBot:
                     target_selector = 'button:has-text("দ্রুত প্র্যাকটিস"), main h3, button:has-text("লগইন"), button:has-text("Login"), a:has-text("লগইন"), a:has-text("Login")'
                     page.locator(target_selector).first.wait_for(state="visible", timeout=20000)
                     
-                    # Click the 'দ্রুত প্র্যাকটিস' tab toggle at the top if visible to load the correct subjects
+                    # Click the 'দ্রুত প্র্যাকটিস' tab toggle at the top if visible and enabled to load the correct subjects
                     quick_practice_tab = page.locator('button:has-text("দ্রুত প্র্যাকটিস")').first
-                    if quick_practice_tab.is_visible():
+                    if quick_practice_tab.is_visible() and quick_practice_tab.is_enabled():
                         logger.info("Clicking the 'দ্রুত প্র্যাকটিস' tab to load practice topics.")
                         quick_practice_tab.click()
                         page.wait_for_timeout(1000)
@@ -603,11 +603,16 @@ class ChorchaQuizBot:
                 
                 self.selected_subject = chosen_title
                 subject_btn = subject_headers.nth(chosen_idx)
+                subject_btn.wait_for(state="visible", timeout=10000)
                 subject_btn.scroll_into_view_if_needed()
                 subject_btn.click()
                 
+                # Wait for page load / DOM content to settle after subject selection
+                try: page.wait_for_load_state("domcontentloaded", timeout=10000)
+                except: pass
+                
                 # Paper Sub-Selection Strategy Validation Layer
-                try: page.locator('main h3').first.wait_for(state="visible", timeout=6000)
+                try: page.locator('main h3').first.wait_for(state="visible", timeout=10000)
                 except: failed_subjects.add(chosen_title); continue
                 
                 chapter_nodes = page.locator('main h3').all()
@@ -622,8 +627,11 @@ class ChorchaQuizBot:
                 if paper_sub_options:
                     chosen_paper_node = random.choice(paper_sub_options)
                     logger.info(f"Routing sub-module branch segment link target: '{chosen_paper_node.inner_text().strip()}'")
+                    chosen_paper_node.wait_for(state="visible", timeout=10000)
                     chosen_paper_node.scroll_into_view_if_needed()
                     chosen_paper_node.click()
+                    try: page.wait_for_load_state("domcontentloaded", timeout=10000)
+                    except: pass
                     page.wait_for_timeout(1000)
                     chapter_nodes = page.locator('main h3').all()
                 
@@ -644,8 +652,11 @@ class ChorchaQuizBot:
                 target_node, target_text = random.choice(valid_chapter_pool)
                 self.selected_chapter = target_text
                 logger.info(f"Target node connection lock verified on entry text: '{target_text}'")
+                target_node.wait_for(state="visible", timeout=10000)
                 target_node.scroll_into_view_if_needed()
                 target_node.click()
+                try: page.wait_for_load_state("domcontentloaded", timeout=10000)
+                except: pass
                 
                 # Handle Chorcha Cup team selection modal if it appears
                 page.wait_for_timeout(1000)
@@ -655,12 +666,12 @@ class ChorchaQuizBot:
                     team_modal_later.click()
                     page.wait_for_timeout(1000)
                 
-                # Engagement Action Process Launch Sequence
-                quick_practice_action = page.locator('button:has-text("দ্রুত প্র্যাকটিস")')
+                # Engagement Action Process Launch Sequence - modal or direct button
+                quick_practice_action = page.locator('button:has-text("দ্রুত প্র্যাকটিস")').last
                 
-                # Account for sliding layouts or accordion frameworks
+                # Account for sliding layouts, accordion frameworks, or modal dialogs
                 start_clock = time.time()
-                while (time.time() - start_clock) < 2.5:
+                while (time.time() - start_clock) < 3.0:
                     if quick_practice_action.is_visible(): break
                     page.wait_for_timeout(150)
                     
@@ -671,12 +682,24 @@ class ChorchaQuizBot:
                         sub_selected_node = random.choice(active_sub_pool)
                         self.selected_chapter = sub_selected_node.inner_text().strip()
                         logger.info(f"Expanding granular operational structural branch mapping: '{self.selected_chapter}'")
+                        sub_selected_node.wait_for(state="visible", timeout=10000)
                         sub_selected_node.scroll_into_view_if_needed()
                         sub_selected_node.click()
+                        try: page.wait_for_load_state("domcontentloaded", timeout=10000)
+                        except: pass
+                        page.wait_for_timeout(1000)
+                        quick_practice_action = page.locator('button:has-text("দ্রুত প্র্যাকটিস")').last
                 
                 try:
-                    quick_practice_action.wait_for(state="visible", timeout=6000)
-                    quick_practice_action.click()
+                    quick_practice_action.wait_for(state="visible", timeout=10000)
+                    quick_practice_action.scroll_into_view_if_needed()
+                    
+                    # Ensure button is enabled or use force click if site has disabled attribute dynamically
+                    if quick_practice_action.is_enabled():
+                        quick_practice_action.click()
+                    else:
+                        logger.info("Action button 'দ্রুত প্র্যাকটিস' is disabled. Attempting force click / element click...")
+                        quick_practice_action.click(force=True)
                     
                     # Wait up to 8 seconds dynamically for correct_options to populate
                     start_time = time.time()
