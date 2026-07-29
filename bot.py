@@ -691,7 +691,13 @@ class ChorchaQuizBot:
                 try:
                     quick_practice_action.wait_for(state="visible", timeout=10000)
                     quick_practice_action.scroll_into_view_if_needed()
-                    quick_practice_action.click()
+                    
+                    # Ensure button is enabled or use force click if site has disabled attribute dynamically
+                    if quick_practice_action.is_enabled():
+                        quick_practice_action.click()
+                    else:
+                        logger.info("Action button 'দ্রুত প্র্যাকটিস' is disabled. Attempting force click / element click...")
+                        quick_practice_action.click(force=True)
                     
                     # Wait up to 8 seconds dynamically for correct_options to populate
                     start_time = time.time()
