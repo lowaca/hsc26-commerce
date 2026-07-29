@@ -537,9 +537,9 @@ class ChorchaQuizBot:
                     target_selector = 'button:has-text("দ্রুত প্র্যাকটিস"), main h3, button:has-text("লগইন"), button:has-text("Login"), a:has-text("লগইন"), a:has-text("Login")'
                     page.locator(target_selector).first.wait_for(state="visible", timeout=20000)
                     
-                    # Click the 'দ্রুত প্র্যাকটিস' tab toggle at the top if visible to load the correct subjects
+                    # Click the 'দ্রুত প্র্যাকটিস' tab toggle at the top if visible and enabled to load the correct subjects
                     quick_practice_tab = page.locator('button:has-text("দ্রুত প্র্যাকটিস")').first
-                    if quick_practice_tab.is_visible():
+                    if quick_practice_tab.is_visible() and quick_practice_tab.is_enabled():
                         logger.info("Clicking the 'দ্রুত প্র্যাকটিস' tab to load practice topics.")
                         quick_practice_tab.click()
                         page.wait_for_timeout(1000)
